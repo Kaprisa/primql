@@ -22,7 +22,7 @@ module.exports = (config) => {
       async query(params = 1, row = false) {
         let q = mysql.format(db.queryString, [params])
         if (q.indexOf('WHERE') !== -1) {
-          q = q.replace(', ', 'AND ')
+          q = q.replace(/=\s+NULL/ig, 'IS NULL').replace(/,/g, 'AND ');
         }
         return mysql[`query${row ? 'Row' : ''}`](q);
       },
