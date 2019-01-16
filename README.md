@@ -6,11 +6,17 @@ const primql = createPrimql(mysqlConfig);
 (async () => {
   const allUsers = await primql().users.select();
   
+  const firstSixUsers = await primql().users.where('id', 7, '<').select();
+  
   await primql().users.add({ name: 'Kseniya', id: 1 });
   
-  const user = await primql().users.select({ id: 1}, true);
+  const user = await primql().users.where('id', 1).select(true);
   
-  await primql().users.join.roles.on('role_id', '=', 'id').select();
+  const userName = await primql().users.where('id', 1).select(true, 'name');
+  
+  await primql().users.join.roles.on('role_id', 'id').select();
+  
+  await primql().users.join.roles.on('role_id', 'id', '>').select();
  
 })()
 ```

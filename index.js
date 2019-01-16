@@ -1,13 +1,18 @@
 import createPool from './db';
 
 const actions = {
-  add: 'INSERT INTO ?? SET ?',
-  select: 'SELECT FROM ?? WHERE ?',
-  update: 'UPDATE ?? SET ?',
-  delete: 'DELETE FROM ?? WHERE ?',
+  add: 'INSERT INTO {table} SET ?',
+  update: 'UPDATE {table} SET ?',
+  delete: 'DELETE FROM {table}',
 };
 
-const JOIN = ' a JOIN ?? b ON a.? = b.?';
+const operators = {
+  where: 'WHERE',
+  and: 'AND',
+  or: 'OR',
+  in: 'IN',
+  notIn: 'NOT IN'
+};
 
 module.exports = (config) => {
   const mysql = createPool(config);
@@ -20,38 +25,55 @@ module.exports = (config) => {
       table: '??',
 
       async query(params = 1, row = false) {
-        let q = mysql.format(db.queryString, [params])
+        let q = mysql.format(db.queryString.replace('{table}', db.table), [params]);
         if (q.indexOf('WHERE') !== -1) {
           q = q.replace(/=\s+NULL/ig, 'IS NULL').replace(/,/g, 'AND ');
         }
-        return mysql[`query${row ? 'Row' : ''}`](q);
+        return mysql.query(q);
       },
 
-      on(firstField, condition, secondField) {
+      on(firstField, secondField, op = '=') {
         db.table = db.table
           .replace('a.?', `a.${firstField}`)
-          .replace('=', condition)
+          .replace('{op}', op)
           .replace('b.?', `b.${secondField}`);
         return primql;
       },
+
+      operator(firstField, secondField, op = '=') {
+        db.queryString += mysql.format(`? ${op} ?`, [firstField, secondField]);
+        return primql;
+      },
+
+      select(row = false, fields = '*') {
+        db.queryString = `SELECT ${fields} FROM {table}` + db.queryString;
+        return row ? db.query().then(result => result[0]) : db.query();
+      },
+
+      join() {
+        db.table += ' a JOIN ?? b ON a.? {op} b.?';
+        return primql;
+      }
 
     };
 
     const primql = new Proxy(db, {
 
       get(target, prop) {
-        if (actions[prop]) {
-          db.queryString += target[prop];
+        if (target[prop]) {
+          return target[prop];
+        } else if (operators[prop]) {
+          db.queryString += ` ${operators[prop]} `;
+          return db.operator;
+        } else if (actions[prop]) {
+          db.queryString = target[prop] + db.queryString;
           return target.query;
-        } else if (prop === 'join') {
-          target.table += JOIN;
-        } else if (prop === 'on') {
-          return target.on;
         } else {
           db.table = target.table.replace('??', prop);
         }
         return primql;
       },
+
     });
 
     return primql;
