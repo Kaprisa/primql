@@ -41,7 +41,10 @@ module.exports = (config) => {
       },
 
       operator(firstField, secondField, op = '=') {
-        db.queryString += mysql.format(`? ${op} ?`, [firstField, secondField]);
+        db.queryString += secondField
+          ? mysql.format(`? ${op} ?`, [firstField, secondField])
+          : mysql.format('?', [firstField]); // typeof firstField === 'object' in this case
+
         return primql;
       },
 
