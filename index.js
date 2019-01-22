@@ -56,6 +56,15 @@ module.exports = (config) => {
       join() {
         db.table += ' a JOIN ?? b ON a.? {op} b.?';
         return primql;
+      },
+
+      sortBy(by, isDesc = false) {
+        db.queryString += mysql.format(` ORDER BY ? ${isDesc ? 'DESC' : 'ASC'}`, [by]);
+        return primql;
+      },
+
+      limit(lim, offset = 0) {
+        db.queryString += mysql.format(` LIMIT ? OFFSET ?`, [lim, offset]);
       }
 
     };
